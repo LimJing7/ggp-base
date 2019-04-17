@@ -54,6 +54,8 @@ public class MiniMaxPlayer extends ExampleLegalPlayer {
 
         }
 
+//        System.out.println(this.memo_table);
+
         // Logging what decisions your player is making as well as other statistics
         // is a great way to debug your player and benchmark it against other players.
         System.out.println("I am playing: " + chosenMove);
@@ -80,7 +82,7 @@ public class MiniMaxPlayer extends ExampleLegalPlayer {
         for (Move oppMove : oppLegalMoves) {
 
             List<Move> action = null;
-            if (role == roles.get(0)) {
+            if (role.equals(roles.get(0))) {
                 action = Arrays.asList(move, oppMove);
 
             } else {
@@ -114,6 +116,8 @@ public class MiniMaxPlayer extends ExampleLegalPlayer {
         }
         if (this.findTerminalp(state, machine)) {
 //            System.out.println("TERMINAL: " + this.findReward(role, state, machine));
+//            System.out.println("State: " + state);
+//            System.out.println(this.findReward(role, state, machine));
             return this.findReward(role, state, machine);
         }
         List<Move> legalMoves = findLegals(role, state, machine);
