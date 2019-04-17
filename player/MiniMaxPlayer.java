@@ -22,7 +22,6 @@ public class MiniMaxPlayer extends ExampleLegalPlayer {
         StateMachine machine = getStateMachine();
         MachineState state = getCurrentState();
 
-        List<Role> roles = machine.getRoles();
         Role role = getRole();
 
         // Gets all legal moves for our player in the current state
