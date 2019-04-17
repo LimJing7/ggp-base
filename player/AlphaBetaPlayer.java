@@ -1,4 +1,5 @@
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 
 import org.ggp.base.apps.player.Player;
@@ -12,9 +13,17 @@ import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 
 public class AlphaBetaPlayer extends ExampleLegalPlayer {
 
+    HashMap<MachineState, Integer> memo_table;
+
     public static void main(String[] args) {
         Player.initialize(new AlphaBetaPlayer().getName());
 
+    }
+
+    @Override
+    public void start(long timeout)
+            throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
+        this.memo_table = new HashMap<>();
     }
 
     @Override
@@ -31,11 +40,11 @@ public class AlphaBetaPlayer extends ExampleLegalPlayer {
         Move chosenMove = legalMoves.get(0);
 
         // Score
-        int score = 0;
-        int alpha = -1;
-        int beta = 101;
+        double score = 0;
+        double alpha = Double.NEGATIVE_INFINITY;
+        double beta = Double.POSITIVE_INFINITY;
         for (Move move : legalMoves) {
-            int result = minScore(role, move, state, alpha, beta);
+            double result = minScore(role, move, state, alpha, beta);
             if (result == 100) {
                 System.out.println("I am playing: " + move);
                 return move;
@@ -52,7 +61,7 @@ public class AlphaBetaPlayer extends ExampleLegalPlayer {
         return chosenMove;
     }
 
-    protected int minScore(Role role, Move move, MachineState state, int alpha, int beta)
+    protected double minScore(Role role, Move move, MachineState state, double alpha, double beta)
             throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
 
         StateMachine machine = getStateMachine();
@@ -65,12 +74,11 @@ public class AlphaBetaPlayer extends ExampleLegalPlayer {
         }
 
         List<Move> oppLegalMoves = findLegals(opponent_role, state, machine);
-        // int score = 100;
         for (Move oppMove : oppLegalMoves) {
 
             // List<Move> action;
             List<Move> action = null;
-            if (role == roles.get(0)) {
+            if (role.equals(roles.get(0))) {
                 action = Arrays.asList(move, oppMove);
             } else {
                 action = Arrays.asList(oppMove, move);
@@ -78,8 +86,12 @@ public class AlphaBetaPlayer extends ExampleLegalPlayer {
 
             // List<Move> action = new ArrayList<Move>(Arrays.asList(action,move));
             MachineState newState = this.findNext(action, state, machine);
-            // int result = minScore(role, this.findNext(action, state, machine));
-            int result = maxScore(role, newState, alpha, beta);
+            double result;
+            if (this.memo_table.containsKey(newState)) {
+                result = this.memo_table.get(newState);
+            } else {
+                result = maxScore(role, newState, alpha, beta);
+            }
             if (beta > result) {
                 beta = result;
             }
@@ -91,7 +103,7 @@ public class AlphaBetaPlayer extends ExampleLegalPlayer {
         return beta;
     }
 
-    protected int maxScore(Role role, MachineState state, int alpha, int beta)
+    protected double maxScore(Role role, MachineState state, double alpha, double beta)
             throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
         StateMachine machine = getStateMachine();
         if (this.findTerminalp(state, machine)) {
@@ -101,7 +113,7 @@ public class AlphaBetaPlayer extends ExampleLegalPlayer {
         for (Move move : legalMoves) {
             // List<Move> action = new ArrayList<Move>(Arrays.asList(move));
             // int result = minScore(role, this.findNext(action, state, machine));
-            int result = minScore(role, move, state, alpha, beta);
+            double result = minScore(role, move, state, alpha, beta);
             if (alpha < result) {
                 alpha = result;
             }
