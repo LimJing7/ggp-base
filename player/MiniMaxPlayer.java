@@ -26,29 +26,23 @@ public class MiniMaxPlayer extends ExampleLegalPlayer {
 
         // Gets all legal moves for our player in the current state
         List<Move> legalMoves = findLegals(role, state, machine);
+        System.out.println(legalMoves);
 
-        Move chosenMove = null;
+        Move chosenMove = legalMoves.get(0);
 
-        // Check turn
-        if (legalMoves.size() > 1) {
-            // my turn
-            // Score
-            int score = 0;
-            for (Move move : legalMoves) {
-                int result = minScore(role, move, state);
-                if (result == 100) {
-                    System.out.println("I am playing: " + move);
-                    return move;
-                }
-                if (result > score) {
-                    score = result;
-                    chosenMove = move;
-                }
-
+        int score = 0;
+        for (Move move : legalMoves) {
+            int result = minScore(role, move, state);
+            System.out.println(move + ": " + result);
+            if (result == 100) {
+                System.out.println("I am playing: " + move);
+                return move;
             }
-        } else {
-            // opp turn
-            chosenMove = legalMoves.get(0);
+            if (result > score) {
+                score = result;
+                chosenMove = move;
+            }
+
         }
 
         // Logging what decisions your player is making as well as other statistics
