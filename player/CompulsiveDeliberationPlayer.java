@@ -1,5 +1,6 @@
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 
 import org.ggp.base.apps.player.Player;
@@ -13,9 +14,17 @@ import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 
 public class CompulsiveDeliberationPlayer extends ExampleLegalPlayer {
 
+    HashMap<MachineState, Integer> memo_table;
+
 	public static void main(String[] args) {
 		Player.initialize(new CompulsiveDeliberationPlayer().getName());
 	}
+
+    @Override
+    public void start(long timeout)
+            throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
+        this.memo_table = new HashMap<>();
+    }
 
 	@Override
 	public Move play(long timeout)
@@ -33,7 +42,7 @@ public class CompulsiveDeliberationPlayer extends ExampleLegalPlayer {
 		//Gets all legal moves for our player in the current state
 		List<Move> legalMoves = findLegals(role, state, machine);
 
-		Move chosenMove = null;
+		Move chosenMove = legalMoves.get(0);
 		int bestScore = 0;
 
 		//Returns the move with best score.
@@ -74,7 +83,14 @@ public class CompulsiveDeliberationPlayer extends ExampleLegalPlayer {
 		int best_score = 0;
 		for (Move move : legalMoves) {
 			List<Move> action = new ArrayList<Move>(Arrays.asList(move));
-			int score = maxScore(role, this.findNext(action, state, machine));
+			MachineState newState = this.findNext(action, state, machine);
+			int score = 0;
+			if (this.memo_table.containsKey(newState)) {
+			    score = this.memo_table.get(newState);
+			} else {
+			    score = maxScore(role, newState);
+			    this.memo_table.put(newState, score);
+			}
 			if (score > best_score) {
 				best_score = score;
 			}
