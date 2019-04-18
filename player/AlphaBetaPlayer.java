@@ -13,7 +13,7 @@ import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 
 public class AlphaBetaPlayer extends ExampleLegalPlayer {
 
-    HashMap<MachineState, Integer> memo_table;
+    HashMap<MachineState, Double> memo_table;
 
     public static void main(String[] args) {
         Player.initialize(new AlphaBetaPlayer().getName());
@@ -91,6 +91,7 @@ public class AlphaBetaPlayer extends ExampleLegalPlayer {
                 result = this.memo_table.get(newState);
             } else {
                 result = maxScore(role, newState, alpha, beta);
+                this.memo_table.put(newState, result);
             }
             if (beta > result) {
                 beta = result;
