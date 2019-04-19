@@ -14,7 +14,7 @@ import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 
 public class CompulsiveDeliberationPlayer extends ExampleLegalPlayer {
 
-    HashMap<MachineState, Integer> memo_table;
+    HashMap<MachineState, Double> memo_table;
 
 	public static void main(String[] args) {
 		Player.initialize(new CompulsiveDeliberationPlayer().getName());
@@ -43,12 +43,12 @@ public class CompulsiveDeliberationPlayer extends ExampleLegalPlayer {
 		List<Move> legalMoves = findLegals(role, state, machine);
 
 		Move chosenMove = legalMoves.get(0);
-		int bestScore = 0;
+		double bestScore = 0;
 
 		//Returns the move with best score.
 		for (Move move : legalMoves) {
 			List<Move> action = new ArrayList<Move>(Arrays.asList(move));
-			int score = maxScore(role, this.findNext(action, state, machine));
+			double score = maxScore(role, this.findNext(action, state, machine));
 			if (score == 100) {
 				chosenMove = move;
 				break;
@@ -74,17 +74,17 @@ public class CompulsiveDeliberationPlayer extends ExampleLegalPlayer {
 		return "Compulsive Deliberation Player";
 	}
 
-	protected int maxScore(Role role, MachineState state) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
+	protected double maxScore(Role role, MachineState state) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
 		StateMachine machine = getStateMachine();
 		if (this.findTerminalp(state, machine)) {
 			return this.findReward(role, state, machine);
 		}
 		List<Move> legalMoves = findLegals(role, state, machine);
-		int best_score = 0;
+		double best_score = 0;
 		for (Move move : legalMoves) {
 			List<Move> action = new ArrayList<Move>(Arrays.asList(move));
 			MachineState newState = this.findNext(action, state, machine);
-			int score = 0;
+			double score = 0;
 			if (this.memo_table.containsKey(newState)) {
 			    score = this.memo_table.get(newState);
 			} else {
