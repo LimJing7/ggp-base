@@ -31,17 +31,24 @@ public class TimeLimitedMobilityPlayer extends OneTwoPlayer {
         Move chosenMove = legalMoves.get(0);
 
         int nodesExplored = 0;
+        double bestScore = 0;
 
         if (this.onePlayer) {
 
-            double bestScore = 0;
-
             // Returns the move with best score.
             for (Move move : legalMoves) {
-                List<Move> action = new ArrayList<Move>(Arrays.asList(move));
-                Pair<Integer, Double> result = oneMaxScorePair(role, this.findNext(action, state, machine), timeout);
-                nodesExplored += result.left;
-                double score = result.right;
+                Pair<Integer, Double> result;
+                double score;
+                long timeLeft = timeout - System.currentTimeMillis();
+                if (timeLeft < 2000) {
+                    nodesExplored--;
+                    score = mobility(role, state);
+                } else {
+                    List<Move> action = new ArrayList<Move>(Arrays.asList(move));
+                    result = oneMaxScorePair(role, this.findNext(action, state, machine), timeout);
+                    nodesExplored += result.left;
+                    score = result.right;
+                }
                 if (score == 100) {
                     chosenMove = move;
                     break;
@@ -51,39 +58,38 @@ public class TimeLimitedMobilityPlayer extends OneTwoPlayer {
                         chosenMove = move;
                     }
                 }
-                long timeLeft = timeout - System.currentTimeMillis();
-                if (timeLeft < 2000) {
-                    nodesExplored--;
-                    break;
-                }
+
             }
         } else {
             // Score
-            double score = 0;
             double alpha = Double.NEGATIVE_INFINITY;
             double beta = Double.POSITIVE_INFINITY;
             for (Move move : legalMoves) {
-                Pair<Integer, Double> res = twoMinScorePair(role, move, state, alpha, beta, timeout);
-                nodesExplored += res.left;
-                double result = res.right;
+                long timeLeft = timeout - System.currentTimeMillis();
+                Pair<Integer, Double> res;
+                double result;
+                if (timeLeft < 2000) {
+                    nodesExplored--;
+                    result = mobility(role, state);
+                } else {
+                    res = twoMinScorePair(role, move, state, alpha, beta, timeout);
+                    nodesExplored += res.left;
+                    result = res.right;
+                }
                 if (result == 100) {
                     System.out.println("I am playing: " + move);
                     return move;
                 }
-                if (result > score) {
-                    score = result;
+                if (result > bestScore) {
+                    bestScore = result;
                     chosenMove = move;
-                }
-                long timeLeft = timeout - System.currentTimeMillis();
-                if (timeLeft < 2000) {
-                    nodesExplored--;
-                    break;
                 }
             }
         }
         // Logging what decisions your player is making as well as other statistics
         // is a great way to debug your player and benchmark it against other players.
         nodesExplored += 1;
+        System.out.println("Score: " + bestScore);
         System.out.println("Nodes explored: " + nodesExplored);
         System.out.println("I am playing: " + chosenMove);
         return chosenMove;
@@ -113,22 +119,24 @@ public class TimeLimitedMobilityPlayer extends OneTwoPlayer {
             } else {
                 action = Arrays.asList(oppMove, move);
             }
-
-            // List<Move> action = new ArrayList<Move>(Arrays.asList(action,move));
             MachineState newState = this.findNext(action, state, machine);
-            Pair<Integer, Double> res = twoMaxScorePair(role, newState, alpha, beta, timeout);
-            nodesExplored += res.left;
-            double result = res.right;
+            Pair<Integer, Double> res;
+            double result;
+
+            long timeLeft = timeout - System.currentTimeMillis();
+            if (timeLeft < 2000) {
+                nodesExplored--;
+                result = mobility(opponent_role, newState);
+            } else {
+                res = twoMaxScorePair(role, newState, alpha, beta, timeout);
+                nodesExplored += res.left;
+                result = res.right;
+            }
             if (result < beta) {
                 beta = result;
             }
             if (beta <= alpha) {
                 return Pair.of(nodesExplored, alpha);
-            }
-            long timeLeft = timeout - System.currentTimeMillis();
-            if (timeLeft < 2000) {
-                nodesExplored--;
-                break;
             }
 
         }
@@ -145,19 +153,23 @@ public class TimeLimitedMobilityPlayer extends OneTwoPlayer {
         int nodesExplored = 0;
         List<Move> legalMoves = findLegals(role, state, machine);
         for (Move move : legalMoves) {
-            Pair<Integer, Double> res = twoMinScorePair(role, move, state, alpha, beta, timeout);
-            nodesExplored += res.left;
-            double result = res.right;
+            long timeLeft = timeout - System.currentTimeMillis();
+            Pair<Integer, Double> res;
+            double result;
+            if (timeLeft < 2000) {
+                result = this.mobility(role, state);
+//                System.out.println("state: " + state);
+//                System.out.println("mobility: " + result);
+            } else {
+                res = twoMinScorePair(role, move, state, alpha, beta, timeout);
+                nodesExplored += res.left;
+                result = res.right;
+            }
             if (alpha < result) {
                 alpha = result;
             }
             if (alpha >= beta) {
                 return Pair.of(nodesExplored, beta);
-            }
-            long timeLeft = timeout - System.currentTimeMillis();
-            if (timeLeft < 2000) {
-                double mobility = this.mobility(role, state);
-                return Pair.of(nodesExplored, mobility);
             }
 
         }
@@ -176,18 +188,22 @@ public class TimeLimitedMobilityPlayer extends OneTwoPlayer {
         List<Move> legalMoves = findLegals(role, state, machine);
         double best_score = 0;
         for (Move move : legalMoves) {
-            List<Move> action = new ArrayList<Move>(Arrays.asList(move));
-            MachineState newState = this.findNext(action, state, machine);
-            Pair<Integer, Double> result = oneMaxScorePair(role, newState, timeout);
-            nodesExplored += result.left;
-            double score = result.right;
+            long timeLeft = timeout - System.currentTimeMillis();
+            Pair<Integer, Double> result;
+            double score;
+            if (timeLeft < 2000) {
+                score = this.mobility(role, state);
+//                System.out.println("state: " + state);
+//                System.out.println("mobility: " + mobility);
+            } else {
+                List<Move> action = new ArrayList<Move>(Arrays.asList(move));
+                MachineState newState = this.findNext(action, state, machine);
+                result = oneMaxScorePair(role, newState, timeout);
+                nodesExplored += result.left;
+                score = result.right;
+            }
             if (score > best_score) {
                 best_score = score;
-            }
-            long timeLeft = timeout - System.currentTimeMillis();
-            if (timeLeft < 2000) {
-                double mobility = this.mobility(role, state);
-                return Pair.of(nodesExplored, mobility);
             }
         }
         nodesExplored += 1;
@@ -200,7 +216,7 @@ public class TimeLimitedMobilityPlayer extends OneTwoPlayer {
 
         List<Move> legalMoves = findLegals(role, state, machine);
         List<Move> feasibleMoves = findActions(role, machine);
-        return (legalMoves.size() / feasibleMoves.size() * 100);
+        return (legalMoves.size() / (double) feasibleMoves.size() * 100);
 
     }
 
@@ -210,7 +226,7 @@ public class TimeLimitedMobilityPlayer extends OneTwoPlayer {
 
         List<Move> legalMoves = findLegals(role, state, machine);
         List<Move> feasibleMoves = findActions(role, machine);
-        return (100 - legalMoves.size() / feasibleMoves.size() * 100);
+        return (100 - legalMoves.size() / (double) feasibleMoves.size() * 100);
 
     }
 
