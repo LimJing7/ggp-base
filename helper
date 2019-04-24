@@ -1,0 +1,31 @@
+    #Heuristic functions
+    
+    protected double reward(Role role, MachineState state)
+            throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
+    	StateMachine machine = getStateMachine();
+    	return findReward(role, state, machine);
+
+    }
+    
+    protected double keepalive(Role role, MachineState state)
+            throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
+    	StateMachine machine = getStateMachine();
+    	double reward=findReward(role, state, machine);
+    	if (this.findTerminalp(state, machine)) {
+    		reward = reward*0.01;
+    	}
+    	else {
+    		reward= reward*10;
+    	}
+    	return reward;
+    }
+
+    protected double mobility(Role role, MachineState state)
+            throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
+        StateMachine machine = getStateMachine();
+
+        List<Move> legalMoves = findLegals(role, state, machine);
+        List<Move> feasibleMoves= findActions(role, machine);
+        return (legalMoves.size()/feasibleMoves.size()*100);
+
+    }
