@@ -59,6 +59,8 @@ public class DepthTimeLimitedKeepalivePlayer extends OneTwoPlayer {
                         if (score > bestScore) {
                             bestScore = score;
                             chosenMove = move;
+                            best_alive = result.right.right;
+
                         } else if (score == bestScore && !best_alive && result.right.right) {
                             bestScore = score;
                             best_alive = result.right.right;
@@ -98,6 +100,8 @@ public class DepthTimeLimitedKeepalivePlayer extends OneTwoPlayer {
                         System.out.println(result);
                         bestScore = result;
                         chosenMove = move;
+                        best_alive = res.right.right;
+
                     } else if (result == bestScore && !best_alive && res.right.right) {
                         bestScore = result;
                         best_alive = res.right.right;
@@ -149,6 +153,13 @@ public class DepthTimeLimitedKeepalivePlayer extends OneTwoPlayer {
         return Pair.of(reward, this.findTerminalp(state, machine));
     }
 
+    protected Pair<Double, Boolean> keepalive_opponent(Role role, MachineState state)
+            throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
+        StateMachine machine = getStateMachine();
+        double focus = this.focus(role, state);
+        return Pair.of(focus, this.findTerminalp(state, machine));
+    }
+
     protected Pair<Integer, Pair<Double, Boolean>> twoMinScorePair(Role role, Move move, MachineState state, double alpha, double beta,
             long timeout, int searchDepth)
             throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
@@ -162,7 +173,7 @@ public class DepthTimeLimitedKeepalivePlayer extends OneTwoPlayer {
             }
         }
         if (searchDepth <= 0) {
-            return Pair.of(0, keepalive(opponent_role, state));
+            return Pair.of(0, keepalive_opponent(opponent_role, state));
         }
 
         int nodesExplored = 0;
@@ -186,6 +197,8 @@ public class DepthTimeLimitedKeepalivePlayer extends OneTwoPlayer {
             double result = res.right.left;
             if (beta > result) {
                 beta = result;
+                best_alive = res.right.right;
+
             } else if (beta == result && !best_alive && res.right.right) {
                 beta = result;
                 best_alive = res.right.right;
@@ -224,6 +237,7 @@ public class DepthTimeLimitedKeepalivePlayer extends OneTwoPlayer {
             double result = res.right.left;
             if (alpha < result) {
                 alpha = result;
+                best_alive = res.right.right;
             } else if (alpha == result && !best_alive && res.right.right) {
                 alpha = result;
                 best_alive = res.right.right;
@@ -264,6 +278,8 @@ public class DepthTimeLimitedKeepalivePlayer extends OneTwoPlayer {
             double score = result.right.left;
             if (score > best_score) {
                 best_score = score;
+                best_alive = result.right.right;
+
             } else if (score == best_score && !best_alive && result.right.right) {
                 best_score = score;
                 best_alive = result.right.right;
