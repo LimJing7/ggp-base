@@ -33,60 +33,75 @@ public class DepthTimeLimitedMobilityPlayer extends OneTwoPlayer {
         Move chosenMove = legalMoves.get(0);
 
         int nodesExplored = 0;
+        double bestScore = 0;
 
         if (this.onePlayer) {
-
-            double bestScore = 0;
-
-            // Returns the move with best score.
-            for (Move move : legalMoves) {
-                List<Move> action = new ArrayList<Move>(Arrays.asList(move));
-                Pair<Integer, Double> result = oneMaxScorePair(role, this.findNext(action, state, machine), timeout,
-                        this.searchDepth);
-                nodesExplored += result.left;
-                double score = result.right;
-                if (score == 100) {
-                    chosenMove = move;
-                    break;
-                } else {
-                    if (score > bestScore) {
-                        bestScore = score;
-                        chosenMove = move;
-                    }
-                }
+            for (int currentSearchDepth = 0; currentSearchDepth < this.searchDepth; currentSearchDepth++) {
                 long timeLeft = timeout - System.currentTimeMillis();
                 if (timeLeft < 2000) {
                     nodesExplored--;
                     break;
+                }
+                // Returns the move with best score.
+                for (Move move : legalMoves) {
+                    List<Move> action = new ArrayList<Move>(Arrays.asList(move));
+                    Pair<Integer, Double> result = oneMaxScorePair(role, this.findNext(action, state, machine), timeout,
+                            currentSearchDepth);
+                    nodesExplored += result.left;
+                    double score = result.right;
+                    if (score == 100) {
+                        chosenMove = move;
+                        break;
+                    } else {
+                        if (score > bestScore) {
+                            bestScore = score;
+                            chosenMove = move;
+                        }
+                    }
+                    timeLeft = timeout - System.currentTimeMillis();
+                    if (timeLeft < 2000) {
+                        nodesExplored--;
+                        break;
+                    }
                 }
             }
         } else {
             // Score
-            double score = 0;
             double alpha = Double.NEGATIVE_INFINITY;
             double beta = Double.POSITIVE_INFINITY;
-            for (Move move : legalMoves) {
-                Pair<Integer, Double> res = twoMinScorePair(role, move, state, alpha, beta, timeout, this.searchDepth);
-                nodesExplored += res.left;
-                double result = res.right;
-                if (result == 100) {
-                    System.out.println("I am playing: " + move);
-                    return move;
-                }
-                if (result > score) {
-                    score = result;
-                    chosenMove = move;
-                }
+            for (int currentSearchDepth = 0; currentSearchDepth < this.searchDepth; currentSearchDepth++) {
                 long timeLeft = timeout - System.currentTimeMillis();
                 if (timeLeft < 2000) {
                     nodesExplored--;
                     break;
                 }
+                for (Move move : legalMoves) {
+                    Pair<Integer, Double> res = twoMinScorePair(role, move, state, alpha, beta, timeout,
+                            currentSearchDepth);
+                    nodesExplored += res.left;
+                    double result = res.right;
+                    System.out.println(result);
+                    if (result == 100) {
+                        System.out.println("I am playing: " + move);
+                        return move;
+                    }
+                    if (result > bestScore) {
+                        bestScore = result;
+                        chosenMove = move;
+                    }
+                    timeLeft = timeout - System.currentTimeMillis();
+                    if (timeLeft < 2000) {
+                        nodesExplored--;
+                        break;
+                    }
+                }
             }
+
         }
         // Logging what decisions your player is making as well as other statistics
         // is a great way to debug your player and benchmark it against other players.
         nodesExplored += 1;
+        System.out.println("Score: " + bestScore);
         System.out.println("Nodes explored: " + nodesExplored);
         System.out.println("I am playing: " + chosenMove);
         return chosenMove;
@@ -98,7 +113,8 @@ public class DepthTimeLimitedMobilityPlayer extends OneTwoPlayer {
 
         List<Move> legalMoves = findLegals(role, state, machine);
         List<Move> feasibleMoves = findActions(role, machine);
-        return (legalMoves.size() / feasibleMoves.size() * 100);
+//        System.out.println((legalMoves.size() / (double) feasibleMoves.size() * 100));
+        return (legalMoves.size() / (double) feasibleMoves.size() * 100);
 
     }
 
@@ -108,7 +124,7 @@ public class DepthTimeLimitedMobilityPlayer extends OneTwoPlayer {
 
         List<Move> legalMoves = findLegals(role, state, machine);
         List<Move> feasibleMoves = findActions(role, machine);
-        return (100 - legalMoves.size() / feasibleMoves.size() * 100);
+        return (100 - legalMoves.size() / (double) feasibleMoves.size() * 100);
 
     }
 
@@ -205,7 +221,7 @@ public class DepthTimeLimitedMobilityPlayer extends OneTwoPlayer {
             return Pair.of(1, (double) this.findReward(role, state, machine));
         }
         if (searchDepth <= 0) {
-            return Pair.of(0, 0.0);
+            return Pair.of(0, this.mobility(role, state));
         }
         int nodesExplored = 0;
         List<Move> legalMoves = findLegals(role, state, machine);
