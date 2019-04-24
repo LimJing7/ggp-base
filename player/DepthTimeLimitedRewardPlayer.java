@@ -12,12 +12,12 @@ import org.ggp.base.util.statemachine.exceptions.GoalDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 
-public class DepthTimeLimitedMobilityPlayer extends OneTwoPlayer {
+public class DepthTimeLimitedRewardPlayer extends OneTwoPlayer {
 
-    int searchDepth = 10;
+    int searchDepth = 14;
 
     public static void main(String[] args) {
-        Player.initialize(new DepthTimeLimitedMobilityPlayer().getName());
+        Player.initialize(new DepthTimeLimitedRewardPlayer().getName());
     }
 
     @Override
@@ -110,6 +110,13 @@ public class DepthTimeLimitedMobilityPlayer extends OneTwoPlayer {
         return chosenMove;
     }
 
+    protected double reward(Role role, MachineState state)
+            throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
+        StateMachine machine = getStateMachine();
+        return findReward(role, state, machine);
+
+    }
+
     protected double mobility(Role role, MachineState state)
             throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
         StateMachine machine = getStateMachine();
@@ -191,7 +198,7 @@ public class DepthTimeLimitedMobilityPlayer extends OneTwoPlayer {
         }
         if (searchDepth <= 0) {
             // return Pair.of(0, alpha);
-            return Pair.of(0, mobility(role, state));
+            return Pair.of(0, reward(role, state));
         }
         int nodesExplored = 0;
         List<Move> legalMoves = findLegals(role, state, machine);
@@ -224,7 +231,7 @@ public class DepthTimeLimitedMobilityPlayer extends OneTwoPlayer {
             return Pair.of(1, (double) this.findReward(role, state, machine));
         }
         if (searchDepth <= 0) {
-            return Pair.of(0, this.mobility(role, state));
+            return Pair.of(0, this.reward(role, state));
         }
         int nodesExplored = 0;
         List<Move> legalMoves = findLegals(role, state, machine);
@@ -250,7 +257,7 @@ public class DepthTimeLimitedMobilityPlayer extends OneTwoPlayer {
 
     @Override
     public String getName() {
-        return "Depth Time Limited Mobility Player";
+        return "Depth Time Limited Reward Player";
     }
 
 }

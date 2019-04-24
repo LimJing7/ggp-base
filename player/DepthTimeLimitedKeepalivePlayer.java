@@ -12,12 +12,12 @@ import org.ggp.base.util.statemachine.exceptions.GoalDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 
-public class DepthTimeLimitedMobilityPlayer extends OneTwoPlayer {
+public class DepthTimeLimitedKeepalivePlayer extends OneTwoPlayer {
 
     int searchDepth = 10;
 
     public static void main(String[] args) {
-        Player.initialize(new DepthTimeLimitedMobilityPlayer().getName());
+        Player.initialize(new DepthTimeLimitedKeepalivePlayer().getName());
     }
 
     @Override
@@ -34,6 +34,7 @@ public class DepthTimeLimitedMobilityPlayer extends OneTwoPlayer {
 
         int nodesExplored = 0;
         double bestScore = 0;
+        boolean bestalive = false;
 
         if (this.onePlayer) {
             for (int currentSearchDepth = 0; currentSearchDepth < this.searchDepth; currentSearchDepth++) {
@@ -44,18 +45,23 @@ public class DepthTimeLimitedMobilityPlayer extends OneTwoPlayer {
                     break;
                 }
                 // Returns the move with best score.
+                boolean best_alive = false;
                 for (Move move : legalMoves) {
                     List<Move> action = new ArrayList<Move>(Arrays.asList(move));
-                    Pair<Integer, Double> result = oneMaxScorePair(role, this.findNext(action, state, machine), timeout,
+                    Pair<Integer, Pair<Double, Boolean>> result = oneMaxScorePair(role, this.findNext(action, state, machine), timeout,
                             currentSearchDepth);
                     nodesExplored += result.left;
-                    double score = result.right;
+                    double score = result.right.left;
                     if (score == 100) {
                         chosenMove = move;
                         break;
                     } else {
                         if (score > bestScore) {
                             bestScore = score;
+                            chosenMove = move;
+                        } else if (score == bestScore && !best_alive && result.right.right) {
+                            bestScore = score;
+                            best_alive = result.right.right;
                             chosenMove = move;
                         }
                     }
@@ -77,11 +83,12 @@ public class DepthTimeLimitedMobilityPlayer extends OneTwoPlayer {
                     nodesExplored--;
                     break;
                 }
+                boolean best_alive = false;
                 for (Move move : legalMoves) {
-                    Pair<Integer, Double> res = twoMinScorePair(role, move, state, alpha, beta, timeout,
+                    Pair<Integer, Pair<Double, Boolean>> res = twoMinScorePair(role, move, state, alpha, beta, timeout,
                             currentSearchDepth);
                     nodesExplored += res.left;
-                    double result = res.right;
+                    double result = res.right.left;
                     if (result == 100) {
                         System.out.println("I am playing: " + move);
                         return move;
@@ -90,6 +97,10 @@ public class DepthTimeLimitedMobilityPlayer extends OneTwoPlayer {
                         System.out.println(move);
                         System.out.println(result);
                         bestScore = result;
+                        chosenMove = move;
+                    } else if (result == bestScore && !best_alive && res.right.right) {
+                        bestScore = result;
+                        best_alive = res.right.right;
                         chosenMove = move;
                     }
                     timeLeft = timeout - System.currentTimeMillis();
@@ -131,7 +142,14 @@ public class DepthTimeLimitedMobilityPlayer extends OneTwoPlayer {
 
     }
 
-    protected Pair<Integer, Double> twoMinScorePair(Role role, Move move, MachineState state, double alpha, double beta,
+    protected Pair<Double, Boolean> keepalive(Role role, MachineState state)
+            throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
+        StateMachine machine = getStateMachine();
+        double reward = findReward(role, state, machine);
+        return Pair.of(reward, this.findTerminalp(state, machine));
+    }
+
+    protected Pair<Integer, Pair<Double, Boolean>> twoMinScorePair(Role role, Move move, MachineState state, double alpha, double beta,
             long timeout, int searchDepth)
             throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
 
@@ -144,10 +162,11 @@ public class DepthTimeLimitedMobilityPlayer extends OneTwoPlayer {
             }
         }
         if (searchDepth <= 0) {
-            return Pair.of(0, focus(opponent_role, state));
+            return Pair.of(0, keepalive(opponent_role, state));
         }
 
         int nodesExplored = 0;
+        boolean best_alive = false;
 
         List<Move> oppLegalMoves = findLegals(opponent_role, state, machine);
         for (Move oppMove : oppLegalMoves) {
@@ -162,14 +181,17 @@ public class DepthTimeLimitedMobilityPlayer extends OneTwoPlayer {
 
             // List<Move> action = new ArrayList<Move>(Arrays.asList(action,move));
             MachineState newState = this.findNext(action, state, machine);
-            Pair<Integer, Double> res = twoMaxScorePair(role, newState, alpha, beta, timeout, searchDepth - 1);
+            Pair<Integer, Pair<Double, Boolean>> res = twoMaxScorePair(role, newState, alpha, beta, timeout, searchDepth - 1);
             nodesExplored += res.left;
-            double result = res.right;
+            double result = res.right.left;
             if (beta > result) {
                 beta = result;
+            } else if (beta == result && !best_alive && res.right.right) {
+                beta = result;
+                best_alive = res.right.right;
             }
             if (beta <= alpha) {
-                return Pair.of(nodesExplored, alpha);
+                return Pair.of(nodesExplored, Pair.of(alpha, res.right.right));
             }
             long timeLeft = timeout - System.currentTimeMillis();
             if (timeLeft < 2000) {
@@ -179,31 +201,35 @@ public class DepthTimeLimitedMobilityPlayer extends OneTwoPlayer {
 
         }
         nodesExplored += 1;
-        return Pair.of(nodesExplored, beta);
+        return Pair.of(nodesExplored, Pair.of(beta, best_alive));
     }
 
-    protected Pair<Integer, Double> twoMaxScorePair(Role role, MachineState state, double alpha, double beta,
+    protected Pair<Integer, Pair<Double, Boolean>> twoMaxScorePair(Role role, MachineState state, double alpha, double beta,
             long timeout, int searchDepth)
             throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
         StateMachine machine = getStateMachine();
         if (this.findTerminalp(state, machine)) {
-            return Pair.of(1, (double) this.findReward(role, state, machine));
+            return Pair.of(1, Pair.of((double) this.findReward(role, state, machine), false));
         }
         if (searchDepth <= 0) {
             // return Pair.of(0, alpha);
-            return Pair.of(0, mobility(role, state));
+            return Pair.of(0, keepalive(role, state));
         }
         int nodesExplored = 0;
+        boolean best_alive = false;
         List<Move> legalMoves = findLegals(role, state, machine);
         for (Move move : legalMoves) {
-            Pair<Integer, Double> res = twoMinScorePair(role, move, state, alpha, beta, timeout, searchDepth - 1);
+            Pair<Integer, Pair<Double, Boolean>> res = twoMinScorePair(role, move, state, alpha, beta, timeout, searchDepth - 1);
             nodesExplored += res.left;
-            double result = res.right;
+            double result = res.right.left;
             if (alpha < result) {
                 alpha = result;
+            } else if (alpha == result && !best_alive && res.right.right) {
+                alpha = result;
+                best_alive = res.right.right;
             }
             if (alpha >= beta) {
-                return Pair.of(nodesExplored, beta);
+                return Pair.of(nodesExplored, Pair.of(beta, res.right.right));
             }
             long timeLeft = timeout - System.currentTimeMillis();
             if (timeLeft < 2000) {
@@ -213,30 +239,34 @@ public class DepthTimeLimitedMobilityPlayer extends OneTwoPlayer {
 
         }
         nodesExplored += 1;
-        return Pair.of(nodesExplored, alpha);
+        return Pair.of(nodesExplored, Pair.of(alpha, best_alive));
 
     }
 
-    protected Pair<Integer, Double> oneMaxScorePair(Role role, MachineState state, long timeout, int searchDepth)
+    protected Pair<Integer, Pair<Double, Boolean>> oneMaxScorePair(Role role, MachineState state, long timeout, int searchDepth)
             throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
         StateMachine machine = getStateMachine();
         if (this.findTerminalp(state, machine)) {
-            return Pair.of(1, (double) this.findReward(role, state, machine));
+            return Pair.of(1, Pair.of((double) this.findReward(role, state, machine), false));
         }
         if (searchDepth <= 0) {
-            return Pair.of(0, this.mobility(role, state));
+            return Pair.of(0, this.keepalive(role, state));
         }
         int nodesExplored = 0;
         List<Move> legalMoves = findLegals(role, state, machine);
         double best_score = 0;
+        boolean best_alive = false;
         for (Move move : legalMoves) {
             List<Move> action = new ArrayList<Move>(Arrays.asList(move));
             MachineState newState = this.findNext(action, state, machine);
-            Pair<Integer, Double> result = oneMaxScorePair(role, newState, timeout, searchDepth - 1);
+            Pair<Integer, Pair<Double, Boolean>> result = oneMaxScorePair(role, newState, timeout, searchDepth - 1);
             nodesExplored += result.left;
-            double score = result.right;
+            double score = result.right.left;
             if (score > best_score) {
                 best_score = score;
+            } else if (score == best_score && !best_alive && result.right.right) {
+                best_score = score;
+                best_alive = result.right.right;
             }
             long timeLeft = timeout - System.currentTimeMillis();
             if (timeLeft < 2000) {
@@ -245,12 +275,12 @@ public class DepthTimeLimitedMobilityPlayer extends OneTwoPlayer {
             }
         }
         nodesExplored += 1;
-        return Pair.of(nodesExplored, best_score);
+        return Pair.of(nodesExplored, Pair.of(best_score, best_alive));
     }
 
     @Override
     public String getName() {
-        return "Depth Time Limited Mobility Player";
+        return "Depth Time Limited Keepalive Player";
     }
 
 }
