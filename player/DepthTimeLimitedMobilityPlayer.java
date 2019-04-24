@@ -141,7 +141,7 @@ public class DepthTimeLimitedMobilityPlayer extends OneTwoPlayer {
             }
         }
         if (searchDepth <= 0) {
-            return Pair.of(0, beta);
+            return Pair.of(0, focus(opponent_role, state));
         }
 
         int nodesExplored = 0;
