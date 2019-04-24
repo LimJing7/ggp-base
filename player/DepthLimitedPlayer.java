@@ -14,7 +14,7 @@ import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 public class DepthLimitedPlayer extends OneTwoPlayer {
 
     Boolean onePlayer;
-    int searchDepth = 10;
+    int searchDepth = 17;
 
     public static void main(String[] args) {
         Player.initialize(new DepthLimitedPlayer().getName());

@@ -14,7 +14,7 @@ import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 
 public class DepthTimeLimitedMobilityPlayer extends OneTwoPlayer {
 
-    int searchDepth = 17;
+    int searchDepth = 8;
 
     public static void main(String[] args) {
         Player.initialize(new DepthTimeLimitedMobilityPlayer().getName());
@@ -37,6 +37,7 @@ public class DepthTimeLimitedMobilityPlayer extends OneTwoPlayer {
 
         if (this.onePlayer) {
             for (int currentSearchDepth = 0; currentSearchDepth < this.searchDepth; currentSearchDepth++) {
+                bestScore = 0;
                 long timeLeft = timeout - System.currentTimeMillis();
                 if (timeLeft < 2000) {
                     nodesExplored--;
@@ -70,6 +71,7 @@ public class DepthTimeLimitedMobilityPlayer extends OneTwoPlayer {
             double alpha = Double.NEGATIVE_INFINITY;
             double beta = Double.POSITIVE_INFINITY;
             for (int currentSearchDepth = 0; currentSearchDepth < this.searchDepth; currentSearchDepth++) {
+                bestScore = 0;
                 long timeLeft = timeout - System.currentTimeMillis();
                 if (timeLeft < 2000) {
                     nodesExplored--;
@@ -80,12 +82,13 @@ public class DepthTimeLimitedMobilityPlayer extends OneTwoPlayer {
                             currentSearchDepth);
                     nodesExplored += res.left;
                     double result = res.right;
-                    System.out.println(result);
                     if (result == 100) {
                         System.out.println("I am playing: " + move);
                         return move;
                     }
                     if (result > bestScore) {
+                        System.out.println(move);
+                        System.out.println(result);
                         bestScore = result;
                         chosenMove = move;
                     }
