@@ -19,3 +19,13 @@
     	}
     	return reward;
     }
+
+    protected double mobility(Role role, MachineState state)
+            throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
+        StateMachine machine = getStateMachine();
+
+        List<Move> legalMoves = findLegals(role, state, machine);
+        List<Move> feasibleMoves= findActions(role, machine);
+        return (legalMoves.size()/feasibleMoves.size()*100);
+
+    }
