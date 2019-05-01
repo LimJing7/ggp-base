@@ -15,8 +15,8 @@ import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 
 public class DepthTimeLimitedMonteCarloPlayer extends OneTwoPlayer {
 
-    int searchDepth = 10;
-    int nDepthCharges = 10;
+    int searchDepth = 2;
+    int nDepthCharges = 50;
     private final Random RAND = new Random();
 
     public static void main(String[] args) {
@@ -34,12 +34,15 @@ public class DepthTimeLimitedMonteCarloPlayer extends OneTwoPlayer {
         // Gets all legal moves for our player in the current state
         List<Move> legalMoves = findLegals(role, state, machine);
         Move chosenMove = legalMoves.get(0);
+        Move previousBest = legalMoves.get(0);
 
         int nodesExplored = 0;
         double bestScore = 0;
+        int currentSearchDepth;
 
         if (this.onePlayer) {
-            for (int currentSearchDepth = 0; currentSearchDepth < this.searchDepth; currentSearchDepth++) {
+            for (currentSearchDepth = 0; currentSearchDepth < this.searchDepth; currentSearchDepth++) {
+                previousBest = Move.create(chosenMove.toString());
                 bestScore = 0;
                 long timeLeft = timeout - System.currentTimeMillis();
                 if (timeLeft < 2000) {
@@ -73,7 +76,9 @@ public class DepthTimeLimitedMonteCarloPlayer extends OneTwoPlayer {
             // Score
             double alpha = Double.NEGATIVE_INFINITY;
             double beta = Double.POSITIVE_INFINITY;
-            for (int currentSearchDepth = 0; currentSearchDepth < this.searchDepth; currentSearchDepth++) {
+            for (currentSearchDepth = 0; currentSearchDepth < this.searchDepth; currentSearchDepth++) {
+                previousBest = Move.create(chosenMove.toString());
+                System.out.println("current search depth: " + currentSearchDepth);
                 bestScore = 0;
                 long timeLeft = timeout - System.currentTimeMillis();
                 if (timeLeft < 2000) {
@@ -109,8 +114,9 @@ public class DepthTimeLimitedMonteCarloPlayer extends OneTwoPlayer {
         nodesExplored += 1;
         System.out.println("Score: " + bestScore);
         System.out.println("Nodes explored: " + nodesExplored);
-        System.out.println("I am playing: " + chosenMove);
-        return chosenMove;
+        System.out.println("Depth searched: " + (currentSearchDepth-1));
+        System.out.println("I am playing: " + previousBest);
+        return previousBest;
     }
 
     protected double mobility(Role role, MachineState state)
@@ -215,7 +221,7 @@ public class DepthTimeLimitedMonteCarloPlayer extends OneTwoPlayer {
             Pair<Integer, Double> res = twoMaxScorePair(role, newState, alpha, beta, timeout, searchDepth - 1);
             nodesExplored += res.left;
             double result = res.right;
-            if (beta > result) {
+            if (result < beta) {
                 beta = result;
             }
             if (beta <= alpha) {
