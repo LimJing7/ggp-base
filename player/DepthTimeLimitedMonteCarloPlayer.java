@@ -16,6 +16,7 @@ import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 public class DepthTimeLimitedMonteCarloPlayer extends OneTwoPlayer {
 
     int searchDepth = 10;
+    int nDepthCharges = 10;
     private final Random RAND = new Random();
 
     public static void main(String[] args) {
@@ -122,34 +123,52 @@ public class DepthTimeLimitedMonteCarloPlayer extends OneTwoPlayer {
         return (legalMoves.size() / (double) feasibleMoves.size() * 100);
 
     }
+
+    /**
+     * run one depth charge
+     * @param role
+     * @param state
+     * @return terminal reward
+     * @throws GoalDefinitionException
+     * @throws MoveDefinitionException
+     * @throws TransitionDefinitionException
+     */
     protected int depthcharge(Role role, MachineState state)
             throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
         StateMachine machine = getStateMachine();
         if (this.findTerminalp(state, machine)) {
             return this.findReward(role, state, machine);
         }
-        List<Role> roles= machine.getRoles();
+        List<Role> roles = machine.getRoles();
         List<Move> move = Arrays.asList(new Move[roles.size()]);
-        for (int i =0; i<roles.size(); i++) {
-        	List<Move> options = findLegals(roles.get(i), state, machine);
-        	move.set(i, options.get(RAND.nextInt(options.size())));
+        for (int i = 0; i < roles.size(); i++) {
+            List<Move> options = findLegals(roles.get(i), state, machine);
+            move.set(i, options.get(RAND.nextInt(options.size())));
         }
         MachineState newState = this.findNext(move, state, machine);
         return depthcharge(role, newState);
     }
 
+    /**
+     * runs count number of depth charges to estimate the reward at this state
+     * @param role
+     * @param state current state
+     * @param count number of depth charges to run
+     * @return estimated reward
+     * @throws GoalDefinitionException
+     * @throws MoveDefinitionException
+     * @throws TransitionDefinitionException
+     */
     protected double montecarlo(Role role, MachineState state, int count)
             throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
-        //StateMachine machine = getStateMachine();
-        int total=0;
-        for	(int i=0; i<count; i++) {
-        	int dc= depthcharge(role, state);
-        	total = total + dc;
+        // StateMachine machine = getStateMachine();
+        int total = 0;
+        for (int i = 0; i < count; i++) {
+            int dc = depthcharge(role, state);
+            total += dc;
         }
-        return  ((double) total)/count;
+        return ((double) total) / count;
     }
-
-
 
     protected double focus(Role role, MachineState state)
             throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
@@ -174,7 +193,8 @@ public class DepthTimeLimitedMonteCarloPlayer extends OneTwoPlayer {
             }
         }
         if (searchDepth <= 0) {
-            return Pair.of(0, focus(opponent_role, state));
+            // return Pair.of(0, focus(opponent_role, state));
+            return Pair.of(0, this.montecarlo(role, state, this.nDepthCharges));
         }
 
         int nodesExplored = 0;
@@ -221,7 +241,7 @@ public class DepthTimeLimitedMonteCarloPlayer extends OneTwoPlayer {
         }
         if (searchDepth <= 0) {
             // return Pair.of(0, alpha);
-            return Pair.of(0, this.montecarlo(role, state, 10));
+            return Pair.of(0, this.montecarlo(role, state, this.nDepthCharges));
         }
         int nodesExplored = 0;
         List<Move> legalMoves = findLegals(role, state, machine);
@@ -254,7 +274,7 @@ public class DepthTimeLimitedMonteCarloPlayer extends OneTwoPlayer {
             return Pair.of(1, (double) this.findReward(role, state, machine));
         }
         if (searchDepth <= 0) {
-            return Pair.of(0, this.montecarlo(role, state, 10));
+            return Pair.of(0, this.montecarlo(role, state, this.nDepthCharges));
         }
         int nodesExplored = 0;
         List<Move> legalMoves = findLegals(role, state, machine);
