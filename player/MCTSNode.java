@@ -26,7 +26,9 @@ public class MCTSNode {
         this.mean = (this.mean * this.count + value) / (this.count + 1);
         this.count++;
 
-        this.containing_map.get(this.parent).addReward(value);
+        if (this.containing_map.containsKey(this.parent)) {
+            this.containing_map.get(this.parent).addReward(value);
+        }
     }
 
     public double getMean() {
