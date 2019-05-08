@@ -16,7 +16,7 @@ import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 public class MCTSPlayer extends ExampleLegalPlayer {
 
     HashMap<MachineState, MCTSNode> memo_table;
-    double explore_weight = 0.8;
+    double explore_weight = 1.44;
     private final Random RAND = new Random();
 
     public static void main(String[] args) {
@@ -134,6 +134,7 @@ public class MCTSPlayer extends ExampleLegalPlayer {
                     double score = selectfn(role, nextState, machine);
                     if (score > bestScore) {
                         selectedState = nextState;
+                        bestScore = score;
                     }
                 }
             }
