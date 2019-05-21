@@ -147,8 +147,8 @@ public class SamplePropNetStateMachine extends StateMachine {
         }
 
         // init
-        for (Proposition proposition : propositions) {
-            Set<Component> inputs = proposition.getInputs();
+        for (Component component: components) {
+            Set<Component> inputs = component.getInputs();
             int count = 0;
             for (Component input : inputs) {
                 if (!(input instanceof Transition)) {
@@ -156,18 +156,19 @@ public class SamplePropNetStateMachine extends StateMachine {
                 }
             }
             if (count == 0) {
-                boundary.add(proposition);
-                order.add(proposition);
+                boundary.add(component);
+                if (component instanceof Proposition) {
+                    order.add((Proposition) component);
+                }
             }
         }
         added.addAll(boundary);
 
+//        propNet.renderToFile("/home/limjing7/Desktop/lala.dot");
+
         int steps = 1;
         while (order.size() != propositions.size() && boundary.size() != 0) {
             steps++;
-            System.out.println(steps);
-            System.out.println(boundary.size());
-            System.out.println(propositions.size() - order.size());
             for (Component component : boundary) {
                 Set<Component> outputs = component.getOutputs();
                 for (Component output : outputs) {
@@ -186,6 +187,16 @@ public class SamplePropNetStateMachine extends StateMachine {
             boundary.clear();
             boundary.addAll(newBoundary);
             newBoundary.clear();
+//            System.out.println("steps: " + steps);
+//            System.out.println("boundary size: " + boundary.size());
+//            System.out.println("left: " + (propositions.size() - order.size()));
+//            System.out.println("set left: " + (components.size() - added.size()));
+        }
+
+        for (Component component : components) {
+            if (!added.contains(component)) {
+                System.out.println(component);
+            }
         }
 
         return order;
