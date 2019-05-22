@@ -1,15 +1,13 @@
 import java.util.HashMap;
 
-import org.ggp.base.util.statemachine.MachineState;
+public class MCTSNodeValue {
 
-public class MCTSNode {
-
-    private MachineState parent;
-    private HashMap<MachineState, MCTSNode> containing_map;
+    private MCTSNodeKey parent;
+    private HashMap<MCTSNodeKey, MCTSNodeValue> containing_map;
     private double mean;
     private int count;
 
-    public MCTSNode(HashMap<MachineState, MCTSNode> containing_map, MachineState parent) {
+    public MCTSNodeValue(HashMap<MCTSNodeKey, MCTSNodeValue> containing_map, MCTSNodeKey parent) {
         this.containing_map = containing_map;
         if (parent != null) {
             this.parent = parent;
@@ -39,7 +37,7 @@ public class MCTSNode {
         return count;
     }
 
-    public MachineState getParent() {
+    public MCTSNodeKey getParent() {
         return parent;
     }
 }

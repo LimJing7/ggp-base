@@ -15,8 +15,8 @@ import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 
 public class MCTSPlayer extends ExampleLegalPlayer {
 
-    HashMap<MachineState, MCTSNode> memo_table;
-    double explore_weight = 0.8;
+    HashMap<MCTSNodeKey, MCTSNodeValue> state_tree;
+    double explore_weight = 1.44;
     private final Random RAND = new Random();
 
     public static void main(String[] args) {
@@ -27,7 +27,7 @@ public class MCTSPlayer extends ExampleLegalPlayer {
     @Override
     public void start(long timeout)
             throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
-        this.memo_table = new HashMap<MachineState, MCTSNode>();
+        this.state_tree = new HashMap<MCTSNodeKey, MCTSNodeValue>();
     }
 
     @Override
@@ -54,32 +54,34 @@ public class MCTSPlayer extends ExampleLegalPlayer {
      * @throws MoveDefinitionException
      * @throws TransitionDefinitionException
      */
-    private Move bestMove(Role role, MachineState state, StateMachine machine) throws MoveDefinitionException, TransitionDefinitionException {
+    private Move bestMove(Role role, MachineState state, StateMachine machine)
+            throws MoveDefinitionException, TransitionDefinitionException {
         List<Move> legalMoves = findLegals(role, state, machine);
         Move bestMove = null;
-        MachineState bestState = null;
+        MCTSNodeKey bestKey = null;
         double bestScore = Double.MIN_VALUE;
         for (Move move : legalMoves) {
-            List<Move> action = new ArrayList<Move>(Arrays.asList(move));
-            MachineState nextState = this.findNext(action, state, machine);
-            double score = this.memo_table.get(nextState).getMean();
+            MCTSNodeKey newKey = new MCTSNodeKey(state, move);
+            double score = this.state_tree.get(newKey).getMean();
             if (score > bestScore) {
                 bestScore = score;
                 bestMove = move;
-                bestState = nextState;
+                bestKey = newKey;
             }
         }
         System.out.println(bestScore);
-        System.out.println(this.memo_table.get(bestState).getCount());
+        System.out.println(this.state_tree.get(bestKey).getCount());
+        System.out.println(state);
         return bestMove;
 
     }
 
     private void step(Role role, MachineState state, StateMachine machine)
             throws MoveDefinitionException, TransitionDefinitionException, GoalDefinitionException {
-        MachineState selectedState = select(role, state, machine);
+        MCTSNodeKey key = new MCTSNodeKey(state, null);
+        MCTSNodeKey selectedKey = select(role, key, machine);
         // expand does not seem needed?
-        simulate(role, selectedState);
+        simulate(role, selectedKey);
     }
 
     /**
@@ -90,61 +92,141 @@ public class MCTSPlayer extends ExampleLegalPlayer {
      * @throws TransitionDefinitionException
      * @throws GoalDefinitionException
      */
-    private void simulate(Role role, MachineState selectedState)
+    private void simulate(Role myRole, MCTSNodeKey key)
             throws MoveDefinitionException, TransitionDefinitionException, GoalDefinitionException {
-        // TODO Auto-generated method stub
         StateMachine machine = getStateMachine();
-        MachineState currState = selectedState;
+        MachineState state = key.getState();
+        Move move = key.getMove();
+
+        MachineState currState = state;
+        List<Role> roles = machine.getRoles();
+
+        if (move != null) {
+            List<Move> actions = Arrays.asList(new Move[roles.size()]);
+            for (int i = 0; i < roles.size(); i++) {
+                if (roles.get(i) != myRole) {
+                    List<Move> options = findLegals(roles.get(i), currState, machine);
+                    actions.set(i, options.get(RAND.nextInt(options.size())));
+                } else {
+                    actions.set(i, move);
+                }
+            }
+            currState = this.findNext(actions, currState, machine);
+        }
+
         int depth = 0;
         while (!this.findTerminalp(currState, machine)) {
-            List<Role> roles = machine.getRoles();
-            List<Move> move = Arrays.asList(new Move[roles.size()]);
+            List<Move> actions = Arrays.asList(new Move[roles.size()]);
             for (int i = 0; i < roles.size(); i++) {
                 List<Move> options = findLegals(roles.get(i), currState, machine);
-                move.set(i, options.get(RAND.nextInt(options.size())));
+                actions.set(i, options.get(RAND.nextInt(options.size())));
             }
-            currState = this.findNext(move, currState, machine);
-            depth ++;
+            currState = this.findNext(actions, currState, machine);
+            depth++;
 //            System.out.println(depth);
 //            System.out.println(currState);
         }
-        double reward = this.findReward(role, currState, machine);
-        this.memo_table.get(selectedState).addReward(reward);
+        double reward = this.findReward(myRole, currState, machine);
+        this.state_tree.get(key).addReward(reward);
 
     }
 
-    private MachineState select(Role role, MachineState state, StateMachine machine)
+    private MCTSNodeKey select(Role role, MCTSNodeKey key, StateMachine machine)
             throws MoveDefinitionException, TransitionDefinitionException {
-        if (!memo_table.containsKey(state)) {
-            this.memo_table.put(state, new MCTSNode(this.memo_table, null));
-            return state;
-        } else if (this.findTerminalp(state, machine)) {
-            return state;
+        if (!state_tree.containsKey(key)) {
+            this.state_tree.put(key, new MCTSNodeValue(this.state_tree, null));
+            return key;
+        } else if (this.findTerminalp(key.getState(), machine)) {
+            // if this is terminal, move should be null
+            return key;
         } else {
-            double bestScore = Double.MIN_VALUE;
-            MachineState selectedState = null;
-            List<Move> legalMoves = findLegals(role, state, machine);
-            for (Move move : legalMoves) {
-                List<Move> action = new ArrayList<Move>(Arrays.asList(move));
-                MachineState nextState = this.findNext(action, state, machine);
-                if (!memo_table.containsKey(nextState)) {
-                    this.memo_table.put(nextState, new MCTSNode(this.memo_table, state));
-                    return nextState;
-                } else {
-                    double score = selectfn(role, nextState, machine);
-                    if (score > bestScore) {
-                        selectedState = nextState;
+            MachineState state = key.getState();
+            Move move = key.getMove();
+            if (move == null) {
+                double bestScore = Double.MIN_VALUE;
+                MCTSNodeKey selectedKey = null;
+                List<Move> legalMoves = findLegals(role, state, machine);
+                for (Move myMove : legalMoves) {
+                    MCTSNodeKey newKey = new MCTSNodeKey(state, myMove);
+                    if (!state_tree.containsKey(newKey)) {
+                        this.state_tree.put(newKey, new MCTSNodeValue(this.state_tree, key));
+                        return newKey;
+                    } else {
+                        double score = selectfn_max(role, newKey, machine);
+                        if (score > bestScore) {
+                            selectedKey = newKey;
+                            bestScore = score;
+                        }
                     }
                 }
+                return select(role, selectedKey, machine);
+            } else {
+                // choose opponents' moves
+                List<Role> roles = machine.getRoles();
+                List<List<Move>> allMovesList = new ArrayList<List<Move>>();
+                for (Role role2 : roles) {
+                    if (!role2.equals(role)) {
+                        List<Move> oppMoves = findLegals(role2, state, machine);
+                        allMovesList.add(oppMoves);
+                    } else {
+                        List<Move> myMoveList = new ArrayList<Move>();
+                        myMoveList.add(move);
+                        allMovesList.add(myMoveList);
+                    }
+                }
+                List<List<Move>> allPossibilities = cartesianProduct(allMovesList);
+                double bestScore = Double.MAX_VALUE;
+                MCTSNodeKey selectedKey = null;
+                for (List<Move> actions : allPossibilities) {
+                    MachineState nextState = this.findNext(actions, state, machine);
+                    MCTSNodeKey newKey = new MCTSNodeKey(nextState, null);
+                    if (!state_tree.containsKey(newKey)) {
+                        this.state_tree.put(newKey, new MCTSNodeValue(this.state_tree, key));
+                        return newKey;
+                    } else {
+                        double score = selectfn_min(role, newKey, machine);
+                        if (score < bestScore) {
+                            selectedKey = newKey;
+                            bestScore = score;
+                        }
+                    }
+                }
+                return select(role, selectedKey, machine);
             }
-            return select(role, selectedState, machine);
+
         }
     }
 
-    private double selectfn(Role role, MachineState state, StateMachine machine) {
-        MCTSNode node = this.memo_table.get(state);
-        MCTSNode parentNode = this.memo_table.get(node.getParent());
+    protected <T> List<List<T>> cartesianProduct(List<List<T>> lists) {
+        List<List<T>> resultLists = new ArrayList<List<T>>();
+        if (lists.size() == 0) {
+            resultLists.add(new ArrayList<T>());
+            return resultLists;
+        } else {
+            List<T> firstList = lists.get(0);
+            List<List<T>> remainingLists = cartesianProduct(lists.subList(1, lists.size()));
+            for (T condition : firstList) {
+                for (List<T> remainingList : remainingLists) {
+                    ArrayList<T> resultList = new ArrayList<T>();
+                    resultList.add(condition);
+                    resultList.addAll(remainingList);
+                    resultLists.add(resultList);
+                }
+            }
+        }
+        return resultLists;
+    }
+
+    private double selectfn_max(Role role, MCTSNodeKey key, StateMachine machine) {
+        MCTSNodeValue node = this.state_tree.get(key);
+        MCTSNodeValue parentNode = this.state_tree.get(node.getParent());
         return node.getMean() + this.explore_weight * Math.sqrt(Math.log(parentNode.getCount()) / node.getCount());
+    }
+
+    private double selectfn_min(Role role, MCTSNodeKey key, StateMachine machine) {
+        MCTSNodeValue node = this.state_tree.get(key);
+        MCTSNodeValue parentNode = this.state_tree.get(node.getParent());
+        return node.getMean() - this.explore_weight * Math.sqrt(Math.log(parentNode.getCount()) / node.getCount());
     }
 
     @Override
