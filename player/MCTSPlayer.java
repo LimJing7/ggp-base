@@ -16,7 +16,7 @@ import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 public class MCTSPlayer extends LegalPropPlayer {
 
     HashMap<MCTSNodeKey, MCTSNodeValue> state_tree;
-    double explore_weight = 14;
+    double explore_weight = 144;
     private final Random RAND = new Random();
 
     public static void main(String[] args) {
@@ -75,8 +75,8 @@ public class MCTSPlayer extends LegalPropPlayer {
                 bestKey = newKey;
             }
         }
-        System.out.println(bestScore);
-        System.out.println(this.state_tree.get(bestKey).getCount());
+        System.out.println("bestScore: " + bestScore);
+        System.out.println("best count: " + this.state_tree.get(bestKey).getCount());
         System.out.println(state);
         return bestMove;
 
