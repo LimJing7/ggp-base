@@ -239,11 +239,11 @@ public class SamplePropNetStateMachine extends StateMachine {
 //            System.out.println("set left: " + (components.size() - added.size()));
         }
 
-        for (Component component : components) {
-            if (!added.contains(component)) {
-                System.out.println(component);
-            }
-        }
+//        for (Component component : components) {
+//            if (!added.contains(component)) {
+//                System.out.println(component);
+//            }
+//        }
 
         return order;
     }
@@ -357,22 +357,29 @@ public class SamplePropNetStateMachine extends StateMachine {
 
     //****** propagating view **********************
     private boolean propmarkp(Component cp) {
-    	// "Base"
-    	if (cp.getInputs().size()==1 && cp.getSingleInput() instanceof Transition) {
-    		return cp.getValue();
-    	}
-    	//"Input"
-    	else if(((Proposition) cp).getName().getName().getValue().equals("does")) {
-    		return cp.getValue();
-    	}
-    	//"init prop"
-    	else if((((Proposition) cp).getName().getName().getValue().toUpperCase().equals("INIT"))) {
- 		   return cp.getValue();
- 	   }
-    	//"view"
-    	else if(cp.getInputs().size()==1) {
-    		return this.propmarkp(cp.getSingleInput());
-    	}
+
+        if (cp instanceof Proposition) {
+            Proposition proposition = (Proposition) cp;
+            // "Base"
+            if (cp.getInputs().size()==1 && cp.getSingleInput() instanceof Transition) {
+                return cp.getValue();
+            }
+            //"Input"
+            else if((proposition.getName().getName().getValue().equals("does"))) {
+                return cp.getValue();
+            }
+            //"init prop"
+            else if ((proposition.getName().getName().getValue().toUpperCase().equals("INIT"))) {
+               return cp.getValue();
+           }
+            //"view"
+            else if(cp.getInputs().size()==1) {
+                return this.propmarkp(cp.getSingleInput());
+            }
+            else {
+                return false;
+            }
+        }
     	//"Negation"
     	else if (cp instanceof Not) {
     		return this.propmarknegation(cp);
