@@ -13,10 +13,10 @@ import org.ggp.base.util.statemachine.exceptions.GoalDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 
-public class MCTSPlayer extends ExampleLegalPlayer {
+public class MCTSPlayer extends LegalPropPlayer {
 
     HashMap<MCTSNodeKey, MCTSNodeValue> state_tree;
-    double explore_weight = 1.44;
+    double explore_weight = 14;
     private final Random RAND = new Random();
 
     public static void main(String[] args) {
@@ -38,11 +38,17 @@ public class MCTSPlayer extends ExampleLegalPlayer {
         MachineState state = getCurrentState();
         Role role = getRole();
 
+        int nDepthCharges = 0;
+
         long timeLeft = timeout - System.currentTimeMillis();
         while (timeLeft > 2000) {
+            nDepthCharges ++;
             this.step(role, state, machine);
             timeLeft = timeout - System.currentTimeMillis();
         }
+
+        System.out.println("Number of Depth Charges: " + nDepthCharges);
+
         return this.bestMove(role, state, machine);
 
     }

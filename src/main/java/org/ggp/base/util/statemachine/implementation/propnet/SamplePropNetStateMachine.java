@@ -13,6 +13,10 @@ import org.ggp.base.util.gdl.grammar.GdlRelation;
 import org.ggp.base.util.gdl.grammar.GdlSentence;
 import org.ggp.base.util.propnet.architecture.Component;
 import org.ggp.base.util.propnet.architecture.PropNet;
+import org.ggp.base.util.propnet.architecture.components.And;
+import org.ggp.base.util.propnet.architecture.components.Constant;
+import org.ggp.base.util.propnet.architecture.components.Not;
+import org.ggp.base.util.propnet.architecture.components.Or;
 import org.ggp.base.util.propnet.architecture.components.Proposition;
 import org.ggp.base.util.propnet.architecture.components.Transition;
 import org.ggp.base.util.propnet.factory.OptimizingPropNetFactory;
@@ -57,7 +61,8 @@ public class SamplePropNetStateMachine extends StateMachine {
     @Override
     public boolean isTerminal(MachineState state) {
         // TODO: Compute whether the MachineState is terminal.
-        return false;
+    	markbases(state, getPropNet());
+    	return propmarkp(getPropNet().getTerminalProposition());
     }
 
     /**
@@ -69,7 +74,15 @@ public class SamplePropNetStateMachine extends StateMachine {
     @Override
     public int getGoal(MachineState state, Role role) throws GoalDefinitionException {
         // TODO: Compute the goal for role in state.
-        return -1;
+    	markbases(state, getPropNet());
+    	Set<Proposition> rewards= getPropNet().getGoalPropositions().get(role);
+    	for (Proposition prop : rewards) {
+			if(propmarkp(prop)) {
+				return getGoalValue(prop);
+			}
+		}
+      	throw new GoalDefinitionException(state, role);
+        //return -1;
     }
 
     /**
@@ -80,7 +93,14 @@ public class SamplePropNetStateMachine extends StateMachine {
     @Override
     public MachineState getInitialState() {
         // TODO: Compute the initial state.
-        return null;
+    	// NOTE:  Not sure how to initialize propnet initial proposition: getPropNet().-- verify!
+    	PropNet pnet= getPropNet();
+    	Proposition ips= pnet.getInitProposition();
+    	if (ips !=null) {
+    		ips.setValue(true);
+    	}
+    	return getStateFromBase();
+        //return null;
     }
 
     /**
@@ -89,7 +109,14 @@ public class SamplePropNetStateMachine extends StateMachine {
     @Override
     public List<Move> findActions(Role role) throws MoveDefinitionException {
         // TODO: Compute legal moves.
-        return null;
+    	Map<GdlSentence, Proposition> amap= getPropNet().getInputPropositions();
+    	List<Move> actions= new ArrayList<Move>();
+    	for (Proposition p : amap.values()) {
+			actions.add(getMoveFromProposition(p));
+		}
+    	return actions;
+        //return null;
+
     }
 
     /**
@@ -98,7 +125,16 @@ public class SamplePropNetStateMachine extends StateMachine {
     @Override
     public List<Move> getLegalMoves(MachineState state, Role role) throws MoveDefinitionException {
         // TODO: Compute legal moves.
-        return null;
+
+    	markbases(state, this.getPropNet());
+    	Set<Proposition> legals = this.getPropNet().getLegalPropositions().get(role);
+    	List<Move> actions= new ArrayList<Move>();
+    	for (Proposition p : legals) {
+			if(propmarkp(p)) {
+				actions.add(getMoveFromProposition(p));
+			}
+		}
+        return actions;
     }
 
     /**
@@ -107,7 +143,17 @@ public class SamplePropNetStateMachine extends StateMachine {
     @Override
     public MachineState getNextState(MachineState state, List<Move> moves) throws TransitionDefinitionException {
         // TODO: Compute the next state.
-        return null;
+    	markactions(moves, this.getPropNet());
+    	markbases(state, this.getPropNet());
+    	Map<GdlSentence, Proposition> bases= this.getPropNet().getBasePropositions();
+    	Set<GdlSentence> nextState= new HashSet<GdlSentence>();
+    	for (GdlSentence gs : bases.keySet()) {
+			Component cp= bases.get(gs).getSingleInput();
+			if (propmarkp(cp.getSingleInput())) {
+				nextState.add(gs);
+			}
+		}
+        return new MachineState(nextState);
     }
 
     /**
@@ -193,11 +239,11 @@ public class SamplePropNetStateMachine extends StateMachine {
 //            System.out.println("set left: " + (components.size() - added.size()));
         }
 
-        for (Component component : components) {
-            if (!added.contains(component)) {
-                System.out.println(component);
-            }
-        }
+//        for (Component component : components) {
+//            if (!added.contains(component)) {
+//                System.out.println(component);
+//            }
+//        }
 
         return order;
     }
@@ -273,4 +319,123 @@ public class SamplePropNetStateMachine extends StateMachine {
         }
         return new MachineState(contents);
     }
+
+
+    //********** Marking functions ****************
+    private void markbases(MachineState state, PropNet propNet) {
+    	clearpropnet(propNet);
+    	Map<GdlSentence, Proposition> props= propNet.getBasePropositions();
+    	Set<GdlSentence> stateContents= state.getContents();
+    	for (GdlSentence gdlSentence : stateContents) {
+			props.get(gdlSentence).setValue(true);
+		}
+    }
+
+    private void clearpropnet(PropNet propNet) {
+    	Proposition ips= propNet.getInitProposition();
+    	if (ips !=null) {
+    		ips.setValue(false);
+    	}
+    	Map<GdlSentence, Proposition> props= propNet.getBasePropositions();
+    	for (GdlSentence gdlSentence : props.keySet()) {
+			props.get(gdlSentence).setValue(false);
+		}
+    }
+
+    private void markactions(List<Move> moves, PropNet propNet) {
+    	Map<GdlSentence, Proposition> props= propNet.getInputPropositions();
+    	for (GdlSentence gdlSentence : props.keySet()) {
+			props.get(gdlSentence).setValue(false);
+		}
+    	//Not fully sure here..but I think should work
+    	List<GdlSentence> todo= toDoes(moves);
+    	for (GdlSentence move : todo) {
+			props.get(move).setValue(true);
+		}
+
+    }
+
+    //****** propagating view **********************
+    private boolean propmarkp(Component cp) {
+
+        if (cp instanceof Proposition) {
+            Proposition proposition = (Proposition) cp;
+            // "Base"
+            if (cp.getInputs().size()==1 && cp.getSingleInput() instanceof Transition) {
+                return cp.getValue();
+            }
+            //"Input"
+            else if((proposition.getName().getName().getValue().equals("does"))) {
+                return cp.getValue();
+            }
+            //"init prop"
+            else if ((proposition.getName().getName().getValue().toUpperCase().equals("INIT"))) {
+               return cp.getValue();
+           }
+            //"view"
+            else if(cp.getInputs().size()==1) {
+                return this.propmarkp(cp.getSingleInput());
+            }
+            else {
+                return false;
+            }
+        }
+
+    	//"Negation"
+    	else if (cp instanceof Not) {
+    		return this.propmarknegation(cp);
+    	}
+    	//"Conjunction"
+    	else if (cp instanceof And) {
+    		return this.propmarkconjunction(cp);
+    	}
+    	//"disjunction"
+    	else if(cp instanceof Or) {
+    		return this.propmarkdisjunction(cp);
+    	}
+    	//"constant"
+    	else if(cp instanceof Constant) {
+    		return cp.getValue();
+    	}
+    	else {
+    		return false;
+    	}
+    }
+
+    private boolean propmarknegation(Component cp) {
+    	return !propmarkp(cp.getSingleInput());
+    }
+    private boolean propmarkconjunction(Component cp) {
+    	Set<Component> sources= cp.getInputs();
+    	for (Component s : sources) {
+			if(!propmarkp(s)) {
+				return false;
+			}
+		}
+    	return true;
+    }
+    private boolean propmarkdisjunction(Component cp) {
+    	Set<Component> sources= cp.getInputs();
+    	for (Component s : sources) {
+			if(propmarkp(s)) {
+				return true;
+			}
+		}
+    	return false;
+    }
+    //****** propagating view **********************
+
+    public void setPropNet(PropNet propNet) {
+    	this.propNet= propNet;
+    }
+
+	public MachineState performPropNetDepthCharge(MachineState state,
+			int[] theDepth) throws TransitionDefinitionException,
+			MoveDefinitionException {
+		return performDepthCharge(state, theDepth);
+	}
+    //********** Marking functions ****************
+	public PropNet getPropNet() {
+		return propNet;
+	}
 }
