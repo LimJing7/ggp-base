@@ -40,4 +40,22 @@ public class MCTSNodeValue {
     public MCTSNodeKey getParent() {
         return parent;
     }
+
+    public void setParent(MCTSNodeKey newParent) {
+        this.containing_map.get(this.parent).removeChild(this);
+        this.parent = newParent;
+        this.containing_map.get(parent).addChild(this);
+    }
+
+    private void removeChild(MCTSNodeValue oldChildValue) {
+        this.mean = this.mean * this.count - oldChildValue.getMean() * oldChildValue.getCount();
+        this.count -= oldChildValue.getCount();
+        this.mean /= this.count;
+    }
+
+    private void addChild(MCTSNodeValue newChildValue) {
+        this.mean = this.mean * this.count + newChildValue.getMean() * newChildValue.getCount();
+        this.count += newChildValue.getCount();
+        this.mean /= this.count;
+    }
 }

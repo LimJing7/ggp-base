@@ -16,7 +16,7 @@ import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 public class MCTSPlayer extends LegalPropPlayer {
 
     HashMap<MCTSNodeKey, MCTSNodeValue> state_tree;
-    double explore_weight = 144;
+    double explore_weight = 14;
     private final Random RAND = new Random();
 
     public static void main(String[] args) {
@@ -39,6 +39,12 @@ public class MCTSPlayer extends LegalPropPlayer {
         Role role = getRole();
 
         int nDepthCharges = 0;
+        MCTSNodeKey key = new MCTSNodeKey(state, null);
+        if (this.state_tree.containsKey(key) ) {
+            System.out.println("Original count: " + this.state_tree.get(key).getCount());
+        } else {
+            System.out.println("Original count: 0");
+        }
 
         long timeLeft = timeout - System.currentTimeMillis();
         while (timeLeft > 2000) {
@@ -48,6 +54,8 @@ public class MCTSPlayer extends LegalPropPlayer {
         }
 
         System.out.println("Number of Depth Charges: " + nDepthCharges);
+        System.out.println(state);
+        System.out.println("Final count: " + this.state_tree.get(key).getCount());
 
         return this.bestMove(role, state, machine);
 
@@ -68,7 +76,18 @@ public class MCTSPlayer extends LegalPropPlayer {
         double bestScore = Double.MIN_VALUE;
         for (Move move : legalMoves) {
             MCTSNodeKey newKey = new MCTSNodeKey(state, move);
-            double score = this.state_tree.get(newKey).getMean();
+            double score;
+            int count;
+            try {
+                score = this.state_tree.get(newKey).getMean();
+                count = this.state_tree.get(newKey).getCount();
+            } catch (Exception nullPointerException) {
+                score = Double.MIN_VALUE;
+                count = 0;
+            }
+
+            System.out.println("" + move + ": " + score + "\t" + "(" + count + ")");
+
             if (score > bestScore) {
                 bestScore = score;
                 bestMove = move;
@@ -77,7 +96,6 @@ public class MCTSPlayer extends LegalPropPlayer {
         }
         System.out.println("bestScore: " + bestScore);
         System.out.println("best count: " + this.state_tree.get(bestKey).getCount());
-        System.out.println(state);
         return bestMove;
 
     }
@@ -86,6 +104,24 @@ public class MCTSPlayer extends LegalPropPlayer {
             throws MoveDefinitionException, TransitionDefinitionException, GoalDefinitionException {
         MCTSNodeKey key = new MCTSNodeKey(state, null);
         MCTSNodeKey selectedKey = select(role, key, machine);
+        MCTSNodeKey currKey = selectedKey;
+        List<MachineState> history = new ArrayList<MachineState>();
+        boolean done = false;
+        while (this.state_tree.containsKey(currKey)) {
+            history.add(currKey.getState());
+            currKey = this.state_tree.get(currKey).getParent();
+            if (key.equals(currKey)) {
+                done = true;
+            }
+        }
+        if (!done) {
+            System.out.println("*****************");
+            System.out.println("help");
+            System.out.println(state);
+            System.out.println(selectedKey.getState());
+            System.out.println(history);
+            System.out.println("*****************");
+        }
         // expand does not seem needed?
         simulate(role, selectedKey);
     }
@@ -140,6 +176,7 @@ public class MCTSPlayer extends LegalPropPlayer {
     private MCTSNodeKey select(Role role, MCTSNodeKey key, StateMachine machine)
             throws MoveDefinitionException, TransitionDefinitionException {
         if (!state_tree.containsKey(key)) {
+            // should only occur at the very start unless it did not manage to run depth charges for all the children
             this.state_tree.put(key, new MCTSNodeValue(this.state_tree, null));
             return key;
         } else if (this.findTerminalp(key.getState(), machine)) {
@@ -165,6 +202,7 @@ public class MCTSPlayer extends LegalPropPlayer {
                         }
                     }
                 }
+                this.state_tree.get(selectedKey).setParent(key);
                 return select(role, selectedKey, machine);
             } else {
                 // choose opponents' moves
@@ -197,6 +235,7 @@ public class MCTSPlayer extends LegalPropPlayer {
                         }
                     }
                 }
+                this.state_tree.get(selectedKey).setParent(key);
                 return select(role, selectedKey, machine);
             }
 
