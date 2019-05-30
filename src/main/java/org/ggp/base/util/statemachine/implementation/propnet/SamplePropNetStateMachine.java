@@ -5,6 +5,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 import org.ggp.base.util.gdl.grammar.Gdl;
@@ -47,6 +48,10 @@ public class SamplePropNetStateMachine extends StateMachine {
     public void initialize(List<Gdl> description) {
         try {
             propNet = OptimizingPropNetFactory.create(description);
+            Set<Component> toRemove = findUselessSubnet(propNet);
+            for (Component component : toRemove) {
+                propNet.removeComponent(component);
+            }
             roles = propNet.getRoles();
             ordering = getOrdering();
             System.out.println("propNet size: " + propNet.getSize());
@@ -57,6 +62,73 @@ public class SamplePropNetStateMachine extends StateMachine {
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private Set<Component> findUselessSubnet(PropNet propNet) {
+        HashSet<Component> toRemove = new HashSet<Component>();
+        HashSet<Component> toKeep = new HashSet<Component>();
+        HashSet<Component> boundary = new HashSet<Component>();
+        HashSet<Component> newBoundary = new HashSet<Component>();
+        Proposition terminalP = propNet.getTerminalProposition();
+        boundary.add(terminalP);
+
+        Map<Role, Set<Proposition>> goals = propNet.getGoalPropositions();
+        for (Entry<Role, Set<Proposition>> goal : goals.entrySet()) {
+            boundary.addAll(goal.getValue());
+        }
+
+        while (!boundary.isEmpty()) {
+            for (Component component : boundary) {
+                if (!toKeep.contains(component)) {
+                    newBoundary.addAll(component.getInputs());
+                    newBoundary.addAll(component.getOutputs());
+                }
+            }
+            toKeep.addAll(boundary);
+            boundary.clear();
+            boundary.addAll(newBoundary);
+            newBoundary.clear();
+        }
+
+        // keep actions
+        HashSet<String> actions = new HashSet<String>();
+        Map<GdlSentence, Proposition> inputComponents = propNet.getInputPropositions();
+        for (Entry<GdlSentence, Proposition> component : inputComponents.entrySet()) {
+            if (toKeep.contains(component.getValue())) {
+                System.out.println(component.getValue().getName().toString().replace("does", "legal"));
+                actions.add(component.getValue().getName().toString().replace("does", "legal"));
+            }
+        }
+
+        Set<Proposition> allPropositions = propNet.getPropositions();
+        for (Proposition proposition : allPropositions) {
+            if (actions.contains(proposition.getName().toString())) {
+                boundary.add(proposition);
+            } else if (proposition.getName().getName().toString().equals("init")) {
+                boundary.add(proposition);
+            }
+        }
+
+        while (!boundary.isEmpty()) {
+            for (Component component : boundary) {
+                if (!toKeep.contains(component)) {
+                    newBoundary.addAll(component.getInputs());
+                }
+            }
+            toKeep.addAll(boundary);
+            boundary.clear();
+            boundary.addAll(newBoundary);
+            newBoundary.clear();
+        }
+
+        Set<Component> allComponents = propNet.getComponents();
+        for (Component component : allComponents) {
+            if (!toKeep.contains(component)) {
+                toRemove.add(component);
+            }
+        }
+
+        return toRemove;
     }
 
     /**
@@ -216,7 +288,7 @@ public class SamplePropNetStateMachine extends StateMachine {
         }
         added.addAll(boundary);
 
-//        propNet.renderToFile("/home/limjing7/Desktop/lala.dot");
+        propNet.renderToFile("/home/limjing7/Desktop/lala.dot");
 
         int steps = 1;
         while (order.size() != propositions.size() && boundary.size() != 0) {
