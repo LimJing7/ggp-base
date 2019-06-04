@@ -48,10 +48,12 @@ public class SamplePropNetStateMachine extends StateMachine {
     public void initialize(List<Gdl> description) {
         try {
             propNet = OptimizingPropNetFactory.create(description);
+            System.out.println("original size: " + propNet.getComponents().size());
             Set<Component> toRemove = findUselessSubnet(propNet);
             for (Component component : toRemove) {
                 propNet.removeComponent(component);
             }
+            System.out.println("final size: " + propNet.getComponents().size());
             roles = propNet.getRoles();
             ordering = getOrdering();
             System.out.println("propNet size: " + propNet.getSize());
