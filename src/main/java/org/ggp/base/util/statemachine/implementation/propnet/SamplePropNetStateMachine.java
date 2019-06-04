@@ -52,6 +52,7 @@ public class SamplePropNetStateMachine extends StateMachine {
             Set<Component> toRemove = findUselessSubnet(propNet);
             for (Component component : toRemove) {
                 propNet.removeComponent(component);
+                System.out.println(component);
             }
             System.out.println("final size: " + propNet.getComponents().size());
             roles = propNet.getRoles();
@@ -97,8 +98,16 @@ public class SamplePropNetStateMachine extends StateMachine {
         Map<GdlSentence, Proposition> inputComponents = propNet.getInputPropositions();
         for (Entry<GdlSentence, Proposition> component : inputComponents.entrySet()) {
             if (toKeep.contains(component.getValue())) {
-                System.out.println(component.getValue().getName().toString().replace("does", "legal"));
                 actions.add(component.getValue().getName().toString().replace("does", "legal"));
+            }
+        }
+
+        Map<Role, Set<Proposition>> legals = propNet.getLegalPropositions();
+        for (Entry<Role, Set<Proposition>> entry : legals.entrySet()) {
+            for (Proposition component : entry.getValue()) {
+                if (toKeep.contains(component)) {
+                    actions.add(component.getName().toString().replace("legal", "does"));
+                }
             }
         }
 
