@@ -52,7 +52,6 @@ public class SamplePropNetStateMachine extends StateMachine {
             Set<Component> toRemove = findUselessSubnet(propNet);
             for (Component component : toRemove) {
                 propNet.removeComponent(component);
-                System.out.println(component);
             }
             System.out.println("final size: " + propNet.getComponents().size());
             roles = propNet.getRoles();

@@ -28,6 +28,27 @@ public class MCTSPlayer extends LegalPropPlayer {
     public void start(long timeout)
             throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
         this.state_tree = new HashMap<MCTSNodeKey, MCTSNodeValue>();
+
+        StateMachine machine = getStateMachine();
+        MachineState state = getCurrentState();
+        Role role = getRole();
+
+//        int nDepthCharges = 0;
+//        MCTSNodeKey key = new MCTSNodeKey(state, null);
+//        if (this.state_tree.containsKey(key)) {
+//            System.out.println("Original count: " + this.state_tree.get(key).getCount());
+//        } else {
+//            System.out.println("Original count: 0");
+//        }
+//
+//        long timeLeft = timeout - System.currentTimeMillis();
+//        while (timeLeft > 2000) {
+//            nDepthCharges++;
+//            this.step(role, state, machine);
+//            timeLeft = timeout - System.currentTimeMillis();
+//        }
+//
+//        System.out.println("Number of Depth Charges: " + nDepthCharges);
     }
 
     @Override
@@ -232,7 +253,9 @@ public class MCTSPlayer extends LegalPropPlayer {
                         }
                     }
                 }
-                System.out.println(selectedKeys.size());
+                if (selectedKeys.size() == 0) {
+                    System.out.println(legalMoves.size());
+                }
                 selectedKey = selectedKeys.get(RAND.nextInt(selectedKeys.size()));
                 this.state_tree.get(selectedKey).setParent(key);
                 return multiPlayerSelect(role, selectedKey, machine);
@@ -271,7 +294,21 @@ public class MCTSPlayer extends LegalPropPlayer {
                         }
                     }
                 }
-                System.out.println(selectedKeys.size());
+                if (selectedKeys.size() == 0) {
+                    System.out.println(allPossibilities.size());
+                    List<Move> actions = allPossibilities.get(0);
+                    MachineState nextState = this.findNext(actions, state, machine);
+                    MCTSNodeKey newKey = new MCTSNodeKey(nextState, null);
+                    double score = selectfn_min(role, newKey, machine);
+                    System.out.println(score);
+                    MCTSNodeValue val = this.state_tree.get(newKey);
+                    System.out.println(val);
+                    System.out.println("node count: " + val.getCount());
+                    System.out.println("node mean: " + val.getMean());
+                    MCTSNodeValue par_val = this.state_tree.get(val.getParent());
+                    System.out.println("parent count: " + par_val.getCount());
+                }
+//                System.out.println(selectedKeys.size());
                 selectedKey = selectedKeys.get(RAND.nextInt(selectedKeys.size()));
                 this.state_tree.get(selectedKey).setParent(key);
                 return multiPlayerSelect(role, selectedKey, machine);
